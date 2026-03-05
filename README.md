@@ -1,155 +1,73 @@
-## Lab 3: Ollama GenAI Container
+# Ollama Docker Project with GitHub Actions CI/CD
 
-### Objective
-Deploy and interact with a local LLM using Ollama in Docker.
+This repository demonstrates a complete CI/CD pipeline for the Ollama project using **Docker** and **GitHub Actions**, including automatic build, test, and push to Docker Hub.
 
-### Step 1: Pull Ollama Image
+---
 
-```bash
-docker pull ollama/ollama:latest
-```
+## Prerequisites
 
-**Note:** This is ~700MB download - patience required!
+- **Git** installed  
+- **Docker** installed and running  
+- **GitHub account**  
+- **Docker Hub account**  
 
-### Step 2: Run Ollama Container
+---
 
-```bash
-docker run -d \
-  --name ollama \
-  -p 11434:11434 \
-  -v ollama-data:/root/.ollama \
-  ollama/ollama
-```
+## Project Structure
 
-Verify it's running:
-```bash
-docker ps | grep ollama
-docker logs ollama
-```
+Docker_GenAI_Ollama / <br>
+├── Dockerfile <br>
+├── README.md <br>
+└── .github ── workflows ── docker.yml
 
-### Step 3: Download a Small Model
+- **Dockerfile** → Instructions to build the Ollama Docker image
 
-**Important:** We'll use a small model (1-2GB) for class:
+- **.github/workflows/docker.yml** → GitHub Actions CI/CD pipeline
 
-```bash
-# Pull llama3.2:1b (smallest, ~1GB)
-docker exec ollama ollama pull llama3.2:1b
-```
+- **README.md** → This documentation for step-by-setp process
 
-**Wait for download to complete** (progress shown):
-```
-pulling manifest
-pulling 43f7a214e5e0... 100% ▕████████████▏ 1.3 GB
-pulling 8c17c2ebb0ea... 100% ▕████████████▏  7.0 KB
-pulling 590d74a5569b... 100% ▕████████████▏  4.8 KB
-pulling 0ba8f0e314b4... 100% ▕████████████▏   78 B
-pulling 56bb8bd477a5... 100% ▕████████████▏  100 B
-verifying sha256 digest
-writing manifest
-success
-```
+---
 
-### Step 4: List Available Models
+## Local Setup
+
+Clone the repo:
 
 ```bash
-docker exec ollama ollama list
+git clone https://github.com/Saima-Devops/Docker_GenAI_Ollama.git
+cd Docker_GenAI_Ollama
 ```
+---
 
-**Expected Output:**
-```
-NAME               ID              SIZE      MODIFIED
-llama3.2:1b        baf6a787fdbf    1.3 GB    2 minutes ago
-```
-
-### Step 5: Test Ollama API
-
-Simple test:
-```bash
-curl http://localhost:11434/api/generate -d '{
-  "model": "llama3.2:1b",
-  "prompt": "What is Docker in one sentence?",
-  "stream": false
-}'
-```
-
-**Expected:** JSON response with AI-generated answer!
-
-### Step 6: Create Python Client Application
+## Building Docker Image Locally
 
 ```bash
-mkdir ollama-client && cd ollama-client
+docker build -t ollama-api .
 ```
 
-Create `requirements.txt`:
+Check the image:
+
+```bash
+docker images
 ```
-requests==2.31.0
+---
+
+## Testing Docker Container Locally
+
+```bash
+docker run -d --name ollama-test -p 11434:11434 ollama-api
+docker ps
+docker logs ollama-test
 ```
+---
 
-Create `client.py`:
-```python
-import requests
-import json
-import sys
-
-OLLAMA_URL = "http://localhost:11434"
-
-def chat(prompt, model="llama3.2:1b"):
-    """Send prompt to Ollama and get response"""
-    try:
-        response = requests.post(
-            f"{OLLAMA_URL}/api/generate",
-            json={
-                "model": model,
-                "prompt": prompt,
-                "stream": False
-            },
-            timeout=60
-        )
-        response.raise_for_status()
-        data = response.json()
-        return data.get('response', 'No response')
-    except requests.exceptions.RequestException as e:
-        return f"Error: {e}"
-
-def main():
-    print("=" * 60)
-    print("OLLAMA DOCKER CLIENT")
-    print("=" * 60)
-    
-    if len(sys.argv) > 1:
-        # Command line prompt
-        prompt = ' '.join(sys.argv[1:])
-        print(f"\nPrompt: {prompt}")
-        print("\nResponse:")
-        print(chat(prompt))
-    else:
-        # Interactive mode
-        print("\nEnter prompts (or 'quit' to exit):\n")
-        while True:
-            try:
-                prompt = input("You: ")
-                if prompt.lower() in ['quit', 'exit', 'q']:
-                    break
-                if prompt.strip():
-                    print("\nOllama:", chat(prompt))
-                    print()
-            except KeyboardInterrupt:
-                break
-    
-    print("\n" + "=" * 60)
-
-if __name__ == "__main__":
-    main()
-```
-
-### Step 7: Test the Client
+## Test the Client
 
 ```bash
 # Install dependencies
-pip install -r requirements.txt --break-system-packages
+`pip install -r requirements.txt --break-system-packages`
 
 # Single prompt test
-python client.py "Explain containers in simple terms"
+`python client.py` "Explain AI in simple terms"
 
 # Interactive mode
 python client.py
@@ -157,183 +75,137 @@ python client.py
 # You: How does multi-stage build work?
 # You: quit
 ```
+---
 
-### Step 8: Create Flask Web Interface
+## Install and run the flask application on localhost
 
-Create `web_client.py`:
-```python
-from flask import Flask, render_template_string, request, jsonify
-import requests
-
-app = Flask(__name__)
-OLLAMA_URL = "http://localhost:11434"
-
-HTML_TEMPLATE = '''
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Ollama Chat</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
-            margin: 50px auto;
-            padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }
-        .container {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        }
-        .chat-box {
-            height: 400px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            padding: 15px;
-            margin: 20px 0;
-            background: #f9f9f9;
-            border-radius: 8px;
-        }
-        .message {
-            margin: 10px 0;
-            padding: 10px;
-            border-radius: 8px;
-        }
-        .user { background: #e3f2fd; text-align: right; }
-        .ai { background: #f1f8e9; }
-        input[type="text"] {
-            width: calc(100% - 100px);
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 16px;
-        }
-        button {
-            padding: 12px 25px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        button:hover { background: #45a049; }
-        .loading { color: #666; font-style: italic; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🤖 Ollama Chat Interface</h1>
-        <p>Powered by Docker + Ollama + Llama 3.2</p>
-        
-        <div class="chat-box" id="chatBox"></div>
-        
-        <input type="text" id="prompt" placeholder="Ask me anything..." onkeypress="if(event.key==='Enter') sendMessage()">
-        <button onclick="sendMessage()">Send</button>
-    </div>
-    
-    <script>
-        function addMessage(text, isUser) {
-            const chatBox = document.getElementById('chatBox');
-            const msg = document.createElement('div');
-            msg.className = 'message ' + (isUser ? 'user' : 'ai');
-            msg.textContent = (isUser ? 'You: ' : 'AI: ') + text;
-            chatBox.appendChild(msg);
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
-        
-        async function sendMessage() {
-            const input = document.getElementById('prompt');
-            const prompt = input.value.trim();
-            if (!prompt) return;
-            
-            addMessage(prompt, true);
-            input.value = '';
-            
-            const chatBox = document.getElementById('chatBox');
-            const loading = document.createElement('div');
-            loading.className = 'message loading';
-            loading.textContent = 'AI is thinking...';
-            loading.id = 'loading';
-            chatBox.appendChild(loading);
-            chatBox.scrollTop = chatBox.scrollHeight;
-            
-            try {
-                const response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt: prompt })
-                });
-                const data = await response.json();
-                
-                document.getElementById('loading').remove();
-                addMessage(data.response, false);
-            } catch (error) {
-                document.getElementById('loading').remove();
-                addMessage('Error: ' + error.message, false);
-            }
-        }
-    </script>
-</body>
-</html>
-'''
-
-@app.route('/')
-def home():
-    return render_template_string(HTML_TEMPLATE)
-
-@app.route('/api/chat', methods=['POST'])
-def chat():
-    data = request.json
-    prompt = data.get('prompt', '')
-    
-    try:
-        response = requests.post(
-            f"{OLLAMA_URL}/api/generate",
-            json={
-                "model": "llama3.2:1b",
-                "prompt": prompt,
-                "stream": False
-            },
-            timeout=60
-        )
-        response.raise_for_status()
-        result = response.json()
-        return jsonify({'response': result.get('response', 'No response')})
-    except Exception as e:
-        return jsonify({'response': f'Error: {str(e)}'}), 500
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
-```
-
-Update `requirements.txt`:
-```
-requests==2.31.0
-Flask==3.0.0
-```
-
-Install and run:
 ```bash
 pip install Flask --break-system-packages
 python web_client.py
 ```
 
-Visit **http://localhost:5000** and chat with the AI! 🤖
+> Visit http://localhost:5000 and chat with the AI! 🤖
 
-### Step 9: Resource Monitoring
+![ollama+docker jpg](https://github.com/user-attachments/assets/69746b1a-a942-4eec-a3a0-89abe3412db5)
 
-While the AI is running, monitor resources:
-```bash
-# In another terminal
-docker stats ollama
-```
-
-Watch CPU and memory usage spike during generation!
-
-### ✅ Lab 3 Complete!
-You've deployed a local AI model in Docker! 🎉
 
 ---
+
+## Stop and remove the container:
+
+```bash
+docker stop ollama-test
+docker rm ollama-test
+```
+---
+
+## Push Code to GitHub
+
+```bash
+git add .
+git commit -m "Initial commit with Docker and CI/CD workflow"
+git push origin main
+```
+---
+
+## GitHub Actions CI/CD Workflow
+
+The workflow .github/workflows/docker.yml performs:
+
+1. Checkout code
+
+2. Build Docker image
+
+3. Run container test
+
+4. Save build/test logs as artifacts
+
+5. Login to Docker Hub using secrets
+
+6. Tag & push Docker image to Docker Hub
+
+---
+
+## Docker Hub Setup
+
+Create a repository on Docker Hub, e.g.:
+
+`YOUR_DOCKER_HUB_ID/ollama-project`
+
+Create an access token with write permissions:
+
+1. Docker Hub → Account Settings → Security → New Access Token
+
+2. Copy the token safely
+
+---
+
+## GitHub Secrets Setup
+
+Go to your repository:
+
+`Settings → Secrets → Actions → New repository secret`
+
+Add the following:
+
+| Name           |  Value             |
+|----------------|------------------- |
+|DOCKER_USERNAME | your docker hub id |
+
+✔️ **SAVE**
+
+
+| Name           |  Value                     |
+|----------------|----------------------------|
+|DOCKER_PASSWORD |your Docker Hub access token|
+
+✔️ **SAVE**
+
+---
+
+## Triggering CI/CD
+
+- Any push to `main` branch will automatically trigger the workflow.
+
+- You can also trigger manually via **GitHub Actions → Workflow → Run workflow.**
+
+---
+
+## Viewing Artifacts & Logs
+
+- Navigate to: **GitHub → Actions → Docker Build & Push → Latest Run**
+
+- Download **build/test logs** under **Artifacts**
+
+---
+
+## Pulling Docker Image Anywhere
+
+```bash
+docker pull saim2026/ollama-project:latest
+docker run -d -p 11434:11434 saim2026/ollama-project:latest
+```
+> This allows you to reuse the image on any machine.
+
+---
+
+## Notes
+
+- Use access tokens instead of your Docker Hub password for security.
+
+- Ensure DOCKER_USERNAME and DOCKER_PASSWORD are correctly set in GitHub Secrets.
+
+- Workflow uses the latest GitHub Actions and upload-artifact@v4.
+
+
+---
+
+## ⭐ What You Achieved
+
+✅ Docker containerization <br>
+✅ GitHub repository management <br>
+✅ Docker Hub image publishing <br>
+✅ CI/CD with GitHub Actions <br>
+
+
+  
