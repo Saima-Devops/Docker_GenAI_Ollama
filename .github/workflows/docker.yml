@@ -1,0 +1,23 @@
+name: Docker Build
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - uses: actions/checkout@v4
+
+    - name: Build Docker image
+      run: docker build -t ollama-api .
+
+    - name: Test container
+      run: |
+        docker run -d -p 11434:11434 ollama-api
+        sleep 10
