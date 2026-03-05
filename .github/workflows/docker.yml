@@ -1,23 +1,51 @@
-name: Docker Build
+name: Docker Build & Push
 
+# Trigger workflow on push to main branch
 on:
   push:
     branches: [ main ]
 
 jobs:
-
-  build:
-
+  build-and-push:
     runs-on: ubuntu-latest
 
     steps:
+    # 1️⃣ Checkout your code
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-    - uses: actions/checkout@v4
-
+    # 2️⃣ Build Docker image
     - name: Build Docker image
-      run: docker build -t ollama-api .
-
-    - name: Test container
       run: |
-        docker run -d -p 11434:11434 ollama-api
+        mkdir -p build-logs
+        docker build -t ollama-api . 2>&1 | tee build-logs/build.log
+
+    # 3️⃣ Test Docker container
+    - name: Run container test
+      run: |
+        docker run -d --name test-container -p 11434:11434 ollama-api
         sleep 10
+        docker ps
+        docker logs test-container 2>&1 | tee -a build-logs/test.log
+        docker stop test-container
+        docker rm test-container
+
+    # 4️⃣ Upload logs as artifacts
+    - name: Upload build and test logs
+      uses: actions/upload-artifact@v3
+      with:
+        name: docker-build-logs
+        path: build-logs/
+
+    # 5️⃣ Login to Docker Hub
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    # 6️⃣ Tag & push Docker image
+    - name: Push Docker image
+      run: |
+        docker tag ollama-api:latest saim2026/ollama-project:latest
+        docker push saim2026/ollama-project:latest
