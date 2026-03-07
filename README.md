@@ -189,6 +189,70 @@ docker run -d -p 11434:11434 saim2026/ollama-project:latest
 
 ---
 
+## Troubleshooting
+
+### Container exits immediately after running
+
+If you run:
+
+```
+docker run -d -p 11434:11434 saim2026/ollama-project:latest
+```
+
+and the container stops immediately, check the logs:
+
+```
+docker logs <container_id>
+```
+
+If you see the error:
+
+```
+unknown command "ollama" for "ollama"
+```
+
+This happens because the base image `ollama/ollama` already defines:
+
+```
+ENTRYPOINT ["ollama"]
+```
+
+If the Dockerfile uses:
+
+```
+CMD ["ollama", "serve"]
+```
+
+Docker executes:
+
+```
+ollama ollama serve
+```
+
+which causes the container to exit.
+
+### Fix
+
+Update the Dockerfile to use:
+
+```
+CMD ["serve"]
+```
+
+Then rebuild the image again:
+
+```
+docker build -t saim2026/ollama-project .
+```
+
+Run the container again:
+
+```
+docker run -d -p 11434:11434 saim2026/ollama-project
+```
+
+---
+
 ## Notes
 
 - Use access tokens instead of your Docker Hub password for security.
