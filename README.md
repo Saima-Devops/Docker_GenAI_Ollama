@@ -91,14 +91,6 @@ python web_client.py
 
 ---
 
-## Stop and remove the container:
-
-```bash
-docker stop ollama-test
-docker rm ollama-test
-```
----
-
 ## Push Code to GitHub
 
 ```bash
@@ -261,7 +253,14 @@ docker run -d -p 11434:11434 saim2026/ollama-project
 
 - Workflow uses the latest GitHub Actions and upload-artifact@v4.
 
+---
 
+## Stop and remove the container if you want (optional)
+
+```bash
+docker stop ollama-test
+docker rm ollama-test
+```
 ---
 
 ## ⭐ What You Achieved
@@ -272,4 +271,4 @@ docker run -d -p 11434:11434 saim2026/ollama-project
 ✅ CI/CD with GitHub Actions <br>
 
 
-  
+---
